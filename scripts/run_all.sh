@@ -2,14 +2,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "=== MonsoonBelief-Rev ==="
-python -m evals.tom.monsoon_belief_revision.runner --mock
+echo "=== RL training (supervised + REINFORCE) ==="
+python -m rl.train --method both
 
-echo "=== Thought Tracing comparison ==="
+echo "=== MonsoonBelief-Rev (belief-state policy) ==="
+python -m evals.tom.monsoon_belief_revision.runner
+
+echo "=== Belief trace demo ==="
 python -m evals.tom.thought_tracing_adapter --compare-mbr
 
-echo "=== Causal Crop Hypothesis ==="
-python -m evals.scientific.causal_crop_hypothesis.runner --mock
+echo "=== Causal Crop Hypothesis (rule engine) ==="
+python -m evals.scientific.causal_crop_hypothesis.runner
 
 echo "=== Rabi crop probe ==="
 python -m geo.tasks.rabi_crop_probe --synthetic --compare-modalities

@@ -28,16 +28,24 @@ class TileMeta:
     cloud_cover_pct: float
 
 
+STAGE_CENTROIDS = {
+    "pre_sowing": np.array([1.0, 0.2, -0.5]),
+    "vegetative": np.array([-0.3, 1.0, 0.4]),
+    "harvest": np.array([-0.8, -0.2, 1.0]),
+}
+
+
 def _deterministic_embedding(meta: TileMeta, dim: int = 768, modality: ModalityConfig = ModalityConfig.S2_ONLY) -> np.ndarray:
-    """Pseudo-embedding for CI when TerraFM weights unavailable."""
+    """Class-conditional pseudo-embeddings — linearly separable for probe demos."""
     seed = int(hashlib.sha256(f"{meta.tile_id}:{modality.value}".encode()).hexdigest(), 16) % (2**32)
     rng = np.random.default_rng(seed)
-    vec = rng.standard_normal(dim).astype(np.float32)
-    # inject weak stage signal
-    stage_offset = {"pre_sowing": 0.0, "vegetative": 0.5, "harvest": -0.3}.get(meta.stage, 0.0)
-    vec[0] += stage_offset
-    if modality == ModalityConfig.S1_S2_FUSED and meta.cloud_cover_pct > 50:
-        vec[1] += 0.4  # SAR helps under cloud
+    vec = rng.standard_normal(dim).astype(np.float32) * 0.15
+    centroid = STAGE_CENTROIDS.get(meta.stage, np.zeros(3))
+    vec[:3] += centroid * 2.0
+    if modality == ModalityConfig.S1_S2_FUSED:
+        # SAR channel boosts separability under cloud for pre_sowing / vegetative
+        if meta.cloud_cover_pct > 50 and meta.stage in ("pre_sowing", "vegetative"):
+            vec[3] += 0.8
     vec /= np.linalg.norm(vec) + 1e-8
     return vec
 

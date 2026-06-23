@@ -24,10 +24,11 @@ llm = ["openai>=1.0"]
 [project.scripts]
 mbr-run = "evals.tom.monsoon_belief_revision.runner:main"
 cch-run = "evals.scientific.causal_crop_hypothesis.runner:main"
+tom-rl-train = "rl.train:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["evals*", "geo*"]
+include = ["evals*", "geo*", "rl*"]
 
 [tool.ruff]
 line-length = 100

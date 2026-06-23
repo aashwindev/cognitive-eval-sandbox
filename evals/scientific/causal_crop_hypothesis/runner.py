@@ -7,6 +7,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+from .rule_engine import infer_label
 from .schema import CausalItem, CausalLabel
 
 
@@ -23,19 +24,9 @@ def load_items(path: Path) -> list[CausalItem]:
 LABELS = [CausalLabel.SUPPORTED, CausalLabel.REFUTED, CausalLabel.UNDERDETERMINED]
 
 
-def mock_predict(item: CausalItem) -> CausalLabel:
-    """Heuristic mock — uses keyword cues from observations."""
-    blob = " ".join(item.observations + [item.intervention, item.claimed_outcome]).lower()
-    if any(w in blob for w in ("below", "deficit", "dry", "refuted", "wet soil", "burn")):
-        if item.label == CausalLabel.REFUTED:
-            return CausalLabel.REFUTED
-    if "underdetermined" in item.id or "plateau" in blob:
-        if item.label == CausalLabel.UNDERDETERMINED:
-            return CausalLabel.UNDERDETERMINED
-    if any(w in blob for w in ("adequate", "supported", "incorporation", "irrigation tonight")):
-        if item.label == CausalLabel.SUPPORTED:
-            return CausalLabel.SUPPORTED
-    return CausalLabel.UNDERDETERMINED
+def predict(item: CausalItem) -> CausalLabel:
+    """Causal rule engine — model-based scientific reasoning checker."""
+    return infer_label(item)
 
 
 def macro_f1(gold: list[CausalLabel], pred: list[CausalLabel]) -> float:
@@ -53,7 +44,7 @@ def macro_f1(gold: list[CausalLabel], pred: list[CausalLabel]) -> float:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run CCH scientific reasoning eval")
-    parser.add_argument("--mock", action="store_true", default=True)
+    parser.add_argument("--mock", action="store_true", default=True, help="legacy flag, ignored")
     parser.add_argument(
         "--data",
         type=Path,
@@ -64,7 +55,7 @@ def main() -> None:
 
     items = load_items(args.data)
     gold = [it.label for it in items]
-    pred = [mock_predict(it) for it in items]
+    pred = [predict(it) for it in items]
 
     by_label: dict[str, dict[str, int]] = defaultdict(lambda: {"correct": 0, "total": 0})
     for it, p in zip(items, pred):
